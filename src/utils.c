@@ -70,7 +70,23 @@ uint8_t ip_prefix_match(uint8_t *ipa, uint8_t *ipb) {
  * @return uint16_t 校验和
  */
 uint16_t checksum16(uint16_t *data, size_t len) {
-    // TO-DO
+    // add by 16 bits
+    // 防止溢出
+    uint32_t sum = 0;
+    // len - 1 为了防止后面的奇数字节处理越界
+    for (int i = 0; i < len - 1; i += 2) {
+        sum += data[i / 2];
+    }
+    // deal with remain byte
+    if (len % 2 == 1) {
+        sum += ((uint8_t *)data)[len - 1];
+    }
+    // deal with the high bits
+    while ((sum >> 16) > 0) {
+        sum = (sum >> 16) + (sum & 0xFFFF);
+    }
+    // get the checksum
+    return (uint16_t)(~sum);
 }
 
 #pragma pack(1)
