@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "udp.h"
+#include "tcp.h"
 #include "net.h"
 
 #include <stdio.h>
@@ -109,33 +110,66 @@ typedef struct peso_hdr {
  * @return uint16_t 计算得到的16位校验和
  */
 uint16_t transport_checksum(uint8_t protocol, buf_t *buf, uint8_t *src_ip, uint8_t *dst_ip) {
-    udp_hdr_t *udp_hdr = (udp_hdr_t *)(buf->data);
-    // add the pesudo header
-    buf_add_header(buf, sizeof(peso_hdr_t));
+    if(protocol == NET_PROTOCOL_UDP){
+        udp_hdr_t *udp_hdr = (udp_hdr_t *)(buf->data);
+        // add the pesudo header
+        buf_add_header(buf, sizeof(peso_hdr_t));
 
-    // stash the ip header
-    peso_hdr_t stash_ip_header;
-    memcpy(&stash_ip_header, buf->data, sizeof(peso_hdr_t));
+        // stash the ip header
+        peso_hdr_t stash_ip_header;
+        memcpy(&stash_ip_header, buf->data, sizeof(peso_hdr_t));
 
-    // fill the pesudo header
-    peso_hdr_t *peso_hdr = (peso_hdr_t *)buf->data;
-    memcpy(peso_hdr->src_ip, src_ip, NET_IP_LEN);
-    memcpy(peso_hdr->dst_ip, dst_ip, NET_IP_LEN);
-    peso_hdr->placeholder = 0;
-    peso_hdr->protocol = NET_PROTOCOL_UDP;
-    // 将要发送出去，所以应该swap16
-    peso_hdr->total_len16 = swap16(buf->len - sizeof(peso_hdr_t));
+        // fill the pesudo header
+        peso_hdr_t *peso_hdr = (peso_hdr_t *)buf->data;
+        memcpy(peso_hdr->src_ip, src_ip, NET_IP_LEN);
+        memcpy(peso_hdr->dst_ip, dst_ip, NET_IP_LEN);
+        peso_hdr->placeholder = 0;
+        peso_hdr->protocol = protocol;
+        // 将要发送出去，所以应该swap16
+        peso_hdr->total_len16 = swap16(buf->len - sizeof(peso_hdr_t));
 
-    // calculate the checksum
-    udp_hdr->checksum16 = 0;
-    udp_hdr->checksum16 = checksum16((uint16_t *)buf->data, buf->len);
+        // calculate the checksum
+        udp_hdr->checksum16 = 0;
+        udp_hdr->checksum16 = checksum16((uint16_t *)buf->data, buf->len);
 
-    // restore the ip header
-    memcpy(buf->data, &stash_ip_header, sizeof(peso_hdr_t));
+        // restore the ip header
+        memcpy(buf->data, &stash_ip_header, sizeof(peso_hdr_t));
 
-    // remove the pesudo header
-    buf_remove_header(buf, sizeof(peso_hdr_t));
+        // remove the pesudo header
+        buf_remove_header(buf, sizeof(peso_hdr_t));
 
-    //return the checksum
-    return udp_hdr->checksum16;
+        //return the checksum
+        return udp_hdr->checksum16;
+    }
+    else if(protocol == NET_PROTOCOL_TCP){
+        tcp_hdr_t *tcp_hdr = (tcp_hdr_t *)(buf->data);
+        // add the pesudo header
+        buf_add_header(buf, sizeof(peso_hdr_t));
+
+        // stash the ip header
+        peso_hdr_t stash_ip_header;
+        memcpy(&stash_ip_header, buf->data, sizeof(peso_hdr_t));
+
+        // fill the pesudo header
+        peso_hdr_t *peso_hdr = (peso_hdr_t *)buf->data;
+        memcpy(peso_hdr->src_ip, src_ip, NET_IP_LEN);
+        memcpy(peso_hdr->dst_ip, dst_ip, NET_IP_LEN);
+        peso_hdr->placeholder = 0;
+        peso_hdr->protocol = protocol;
+        // 将要发送出去，所以应该swap16
+        peso_hdr->total_len16 = swap16(buf->len - sizeof(peso_hdr_t));
+
+        // calculate the checksum
+        tcp_hdr->checksum16 = 0;
+        tcp_hdr->checksum16 = checksum16((uint16_t *)buf->data, buf->len);
+
+        // restore the ip header
+        memcpy(buf->data, &stash_ip_header, sizeof(peso_hdr_t));
+
+        // remove the pesudo header
+        buf_remove_header(buf, sizeof(peso_hdr_t));
+
+        //return the checksum
+        return tcp_hdr->checksum16;
+    }
 }
