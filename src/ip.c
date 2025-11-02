@@ -16,7 +16,10 @@ void ip_in(buf_t *buf, uint8_t *src_mac) {
     if (buf->len < sizeof(ip_hdr_t)) {
         return;
     }
-    // ICMP need ？
+    buf_t copy_buf;
+    buf_init(&copy_buf, buf->len);
+    memcpy(copy_buf.data, buf->data, buf->len);
+    copy_buf.len = buf->len;
     // 进行报文头部检测
     ip_hdr_t *ip_hdr = (ip_hdr_t *)buf->data;
     if (ip_hdr->version != IP_VERSION_4) {
@@ -53,6 +56,7 @@ void ip_in(buf_t *buf, uint8_t *src_mac) {
     uint8_t *src_ip = ip_hdr->src_ip;
     if (net_in(buf, protocol, src_ip) < 0) {
         // ICMP
+        icmp_unreachable(&copy_buf, src_ip, ICMP_CODE_PROTOCOL_UNREACH);
         return;
     }
     
