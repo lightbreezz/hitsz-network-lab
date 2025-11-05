@@ -231,7 +231,7 @@ void tcp_in(buf_t *buf, uint8_t *src_ip) {
 
             // TODO: 如果收到 FIN 报文，则增加 send_flags 相应标志位，并且进行状态转移
             if (TCP_FLG_ISSET(recv_flags, TCP_FLG_FIN)) {
-                send_flags |= TCP_FLG_ACK;
+                send_flags |= TCP_FLG_ACK | TCP_FLG_FIN;
                 tcp_conn->state = TCP_STATE_LAST_ACK;
             } else {
                 // 要不要跳过 CLOSE_WAIT 直接进入 LAST_ACK？
@@ -258,12 +258,6 @@ void tcp_in(buf_t *buf, uint8_t *src_ip) {
     // TODO
     if (buf->len > tcp_hdr_sz) {
         tcp_handler_t *handler = map_get(&tcp_handler_table, &host_port);
-        // if (handler != NULL) {
-        //     buf_t data_buf;
-        //     buf_init(&data_buf, buf->len - tcp_hdr_sz);
-        //     memcpy(data_buf.data, buf->data + tcp_hdr_sz, data_buf.len);
-        //     (*handler)(tcp_conn, data_buf.data, data_buf.len, remote_ip, remote_port);
-        // }
         buf_remove_header(buf, tcp_hdr_sz);
         if (handler != NULL) {
             (*handler)(tcp_conn, buf->data, buf->len, remote_ip, remote_port);
